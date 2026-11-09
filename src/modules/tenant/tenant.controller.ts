@@ -35,10 +35,9 @@ export class TenantController {
    */
   @Post('onboard')
   @UseGuards(JwtAuthGuard)
-  @UsePipes(new ZodValidationPipe(onboardTenantSchema))
   async onboard(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: OnboardTenantDto,
+    @Body(new ZodValidationPipe(onboardTenantSchema)) dto: OnboardTenantDto,
   ) {
     return this.tenantService.onboard(user, dto);
   }

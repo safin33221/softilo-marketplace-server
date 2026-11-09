@@ -9,10 +9,11 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { generateSlug } from '../../common/utils/slug.js';
 import { type AuthenticatedUser } from '../../common/decorators/current-user.decorator.js';
 import { type OnboardTenantDto, type ResolveTenantQueryDto } from './tenant.dto.js';
+import { Result } from 'pg';
 
 @Injectable()
 export class TenantService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   /**
    * Onboards a seller shop with zero upfront fees.
@@ -90,7 +91,7 @@ export class TenantService {
         },
       });
 
-      return {
+      const retsult = {
         success: true,
         message: 'সেলার অনবোর্ডিং সফল হয়েছে (Seller onboarded successfully)',
         tenant,
@@ -102,6 +103,9 @@ export class TenantService {
           tenantId: updatedUser.tenantId,
         },
       };
+
+      console.log(retsult)
+      return retsult
     });
   }
 

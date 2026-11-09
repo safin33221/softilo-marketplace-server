@@ -6,10 +6,11 @@ export const onboardTenantSchema = z.object({
     .string()
     .min(2, 'স্লাগ নূন্যতম ২ অক্ষর হতে হবে (Slug must be at least 2 chars)')
     .regex(/^[a-z0-9-]+$/, 'স্লাগে শুধু ইংরেজি ছোট অক্ষর, সংখ্যা ও হাইফেন থাকতে পারবে (Slug must be lowercase alphanumeric and hyphens)')
-    .optional(),
-  customDomain: z.string().optional(),
-  logoUrl: z.string().url('ভ্যালিড ইমেজ URL দিন (Valid logo URL required)').optional(),
-  bannerUrl: z.string().url('ভ্যালিড ব্যানার URL দিন (Valid banner URL required)').optional(),
+    .optional()
+    .or(z.literal('')),
+  customDomain: z.string().optional().or(z.literal('')),
+  logoUrl: z.string().url('ভ্যালিড ইমেজ URL দিন (Valid logo URL required)').optional().or(z.literal('')),
+  bannerUrl: z.string().url('ভ্যালিড ব্যানার URL দিন (Valid banner URL required)').optional().or(z.literal('')),
 });
 
 export type OnboardTenantDto = z.infer<typeof onboardTenantSchema>;

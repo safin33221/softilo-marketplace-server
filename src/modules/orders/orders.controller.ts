@@ -45,10 +45,9 @@ export class OrdersController {
    */
   @Get()
   @UseGuards(JwtAuthGuard)
-  @UsePipes(new ZodValidationPipe(listOrdersQuerySchema))
   async findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() query: ListOrdersQueryDto,
+    @Query(new ZodValidationPipe(listOrdersQuerySchema)) query: ListOrdersQueryDto,
   ) {
     return this.ordersService.findAll(user, query);
   }

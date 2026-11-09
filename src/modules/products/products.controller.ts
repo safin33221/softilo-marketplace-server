@@ -34,10 +34,9 @@ export class ProductsController {
    */
   @Post()
   @UseGuards(JwtAuthGuard, TenantGuard)
-  @UsePipes(new ZodValidationPipe(createProductSchema))
   async create(
     @Req() req: { tenantId: string },
-    @Body() dto: CreateProductDto,
+    @Body(new ZodValidationPipe(createProductSchema)) dto: CreateProductDto,
   ) {
     return this.productsService.create(req.tenantId, dto);
   }
