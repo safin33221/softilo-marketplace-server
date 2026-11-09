@@ -4,16 +4,19 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { generateSlug } from '../../common/utils/slug.js';
 import { type AuthenticatedUser } from '../../common/decorators/current-user.decorator.js';
 import { type OnboardTenantDto, type ResolveTenantQueryDto } from './tenant.dto.js';
-import { Result } from 'pg';
 
 @Injectable()
 export class TenantService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   /**
    * Onboards a seller shop with zero upfront fees.
@@ -91,9 +94,20 @@ export class TenantService {
         },
       });
 
-      const retsult = {
+      // Generate refreshed JWT session token carrying the active tenantId
+      const tokenPayload = {
+        sub: updatedUser.id,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        tenantId: updatedUser.tenantId,
+      };
+
+      const accessToken = await this.jwtService.signAsync(tokenPayload);
+
+      return {
         success: true,
         message: 'সেলার অনবোর্ডিং সফল হয়েছে (Seller onboarded successfully)',
+        accessToken,
         tenant,
         wallet,
         user: {
@@ -103,9 +117,6 @@ export class TenantService {
           tenantId: updatedUser.tenantId,
         },
       };
-
-      console.log(retsult)
-      return retsult
     });
   }
 

@@ -18,8 +18,7 @@ export class AuthController {
    */
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ZodValidationPipe(sendOtpSchema))
-  async sendOtp(@Body() dto: SendOtpDto) {
+  async sendOtp(@Body(new ZodValidationPipe(sendOtpSchema)) dto: SendOtpDto) {
     return this.authService.sendOtp(dto);
   }
 
@@ -29,8 +28,7 @@ export class AuthController {
    */
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ZodValidationPipe(verifyOtpSchema))
-  async verifyOtp(@Body() dto: VerifyOtpDto) {
+  async verifyOtp(@Body(new ZodValidationPipe(verifyOtpSchema)) dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
   }
 }

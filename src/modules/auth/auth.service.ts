@@ -1,4 +1,11 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -23,10 +30,46 @@ export class AuthService {
 
   /**
    * Generates and dispatches a 4-digit OTP to a valid Bangladeshi phone number.
-   * In development/testing, static OTP '1234' is permitted for zero-friction workflows.
+   * Enforces role boundary checks:
+   * - SELLER_LOGIN: Phone must belong to an existing registered seller.
+   * - ONBOARD: Phone must NOT belong to an already onboarded store.
    */
   async sendOtp(dto: SendOtpDto) {
     const normalizedPhone = normalizeBdPhone(dto.phone);
+
+    // 1. SELLER_LOGIN check: Phone MUST belong to an existing active seller!
+    if (dto.purpose === 'SELLER_LOGIN') {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      const user = await this.prisma.user.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      const hasSellerAccess =
+        (tenant && tenant.isActive) ||
+        (user && (user.role === Role.SELLER_OWNER || user.role === Role.SUPER_ADMIN) && user.tenantId);
+
+      if (!hasSellerAccess) {
+        throw new NotFoundException(
+          'এই নাম্বারে কোনো নিবন্ধিত সেলার অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে প্রথমে দোকান অনবোর্ডিং করুন। (No registered seller account found for this phone. Please onboard your shop first.)',
+        );
+      }
+    }
+
+    // 2. ONBOARD check: Phone MUST NOT already be registered to an existing tenant!
+    if (dto.purpose === 'ONBOARD') {
+      const existingTenant = await this.prisma.tenant.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      if (existingTenant) {
+        throw new ConflictException(
+          'এই নাম্বারে ইতিমধ্যে একটি দোকান নিবন্ধিত রয়েছে। অনুগ্রহ করে সরাসরি লগইন করুন। (A shop already exists for this phone number. Please login.)',
+        );
+      }
+    }
 
     // Development or configured static OTP
     const isDev = process.env.NODE_ENV !== 'production';
@@ -51,7 +94,7 @@ export class AuthService {
       this.logger.warn(`Could not persist OTP to database: ${(dbError as Error).message}`);
     }
 
-    this.logger.log(`[OTP Sent] Phone: ${normalizedPhone}, OTP: ${isDev ? otp : '****'}`);
+    this.logger.log(`[OTP Sent] Phone: ${normalizedPhone}, Purpose: ${dto.purpose || 'ONBOARD'}, OTP: ${isDev ? otp : '****'}`);
 
     return {
       success: true,
@@ -107,25 +150,68 @@ export class AuthService {
       throw new BadRequestException('ভুল ওটিপি অথবা ওটিপির মেয়াদ শেষ হয়েছে (Invalid or expired OTP)');
     }
 
-    // 2. Find or Provision User based on normalized phone number
+    // 2. Handle User Lookup, Role Enforcement, and Provisioning
     let user = await this.prisma.user.findUnique({
       where: { phone: normalizedPhone },
     });
 
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { phone: normalizedPhone },
+    });
+
+    // For SELLER_LOGIN: Reject unauthorized users, buyers, or non-sellers
+    if (dto.purpose === 'SELLER_LOGIN') {
+      const hasSellerAccess =
+        (tenant && tenant.isActive) ||
+        (user && (user.role === Role.SELLER_OWNER || user.role === Role.SUPER_ADMIN) && user.tenantId);
+
+      if (!hasSellerAccess) {
+        throw new ForbiddenException(
+          'শুধুমাত্র নিবন্ধিত সেলার এই পোর্টালে লগইন করতে পারবেন। সাধারণ ক্রেতাদের জন্য এই পোর্টাল নয়। (Only registered sellers can login to this portal.)',
+        );
+      }
+
+      // If user had tenant phone match but tenantId was missing, link it
+      if (!user && tenant) {
+        user = await this.prisma.user.create({
+          data: {
+            phone: normalizedPhone,
+            role: Role.SELLER_OWNER,
+            tenantId: tenant.id,
+            name: dto.name || tenant.name,
+          },
+        });
+      } else if (user && tenant && (!user.tenantId || user.role !== Role.SELLER_OWNER)) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            role: Role.SELLER_OWNER,
+            tenantId: tenant.id,
+          },
+        });
+      }
+    } else {
+      // ONBOARD or CUSTOMER:
+      if (!user) {
+        const initialRole = dto.role ?? Role.CUSTOMER;
+        user = await this.prisma.user.create({
+          data: {
+            phone: normalizedPhone,
+            name: dto.name ?? null,
+            role: initialRole,
+            tenantId: tenant?.id ?? null,
+          },
+        });
+      } else if (dto.name && !user.name) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { name: dto.name },
+        });
+      }
+    }
+
     if (!user) {
-      const initialRole = dto.role ?? Role.CUSTOMER;
-      user = await this.prisma.user.create({
-        data: {
-          phone: normalizedPhone,
-          name: dto.name ?? null,
-          role: initialRole,
-        },
-      });
-    } else if (dto.name && !user.name) {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { name: dto.name },
-      });
+      throw new BadRequestException('ইউজার একাউন্ট লোড করা সম্ভব হয়নি');
     }
 
     // 3. Issue signed JWT session token
