@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -66,11 +66,10 @@ export class ProductsController {
    */
   @Patch(':id')
   @UseGuards(JwtAuthGuard, TenantGuard)
-  @UsePipes(new ZodValidationPipe(updateProductSchema))
   async update(
     @Param('id') id: string,
     @Req() req: { tenantId: string },
-    @Body() dto: UpdateProductDto,
+    @Body(new ZodValidationPipe(updateProductSchema)) dto: UpdateProductDto,
   ) {
     return this.productsService.update(id, req.tenantId, dto);
   }
@@ -88,4 +87,5 @@ export class ProductsController {
     return this.productsService.delete(id, req.tenantId);
   }
 }
+
 

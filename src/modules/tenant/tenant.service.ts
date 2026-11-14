@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   ConflictException,
   NotFoundException,
@@ -226,5 +226,42 @@ export class TenantService {
       tenant: updated,
     };
   }
-}
 
+  /**
+   * Updates seller tenant profile metadata.
+   */
+  async updateProfile(tenantId: string, dto: any) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('টেন্যান্ট খুঁজে পাওয়া যায়নি');
+    }
+
+    if (dto.customDomain && dto.customDomain !== tenant.customDomain) {
+      const domainTaken = await this.prisma.tenant.findUnique({
+        where: { customDomain: dto.customDomain },
+      });
+      if (domainTaken && domainTaken.id !== tenantId) {
+        throw new ConflictException('এই কাস্টম ডোমেইনটি ইতিমধ্যে ব্যবহৃত হচ্ছে');
+      }
+    }
+
+    const updated = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        ...(dto.name ? { name: dto.name.trim() } : {}),
+        ...(dto.customDomain !== undefined ? { customDomain: dto.customDomain?.trim() || null } : {}),
+        ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl?.trim() || null } : {}),
+        ...(dto.bannerUrl !== undefined ? { bannerUrl: dto.bannerUrl?.trim() || null } : {}),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে',
+      tenant: updated,
+    };
+  }
+}

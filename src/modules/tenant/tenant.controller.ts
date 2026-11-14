@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Get,
@@ -21,8 +21,10 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
   onboardTenantSchema,
   resolveTenantQuerySchema,
+  updateTenantSchema,
   type OnboardTenantDto,
   type ResolveTenantQueryDto,
+  type UpdateTenantDto,
 } from './tenant.dto.js';
 
 @Controller('api/v1/tenant')
@@ -63,6 +65,19 @@ export class TenantController {
   }
 
   /**
+   * PATCH /api/v1/tenant/me
+   * Seller updates store profile settings (name, customDomain, logoUrl, bannerUrl).
+   */
+  @Patch('me')
+  @UseGuards(JwtAuthGuard, TenantGuard)
+  async updateProfile(
+    @Req() req: { tenantId: string },
+    @Body(new ZodValidationPipe(updateTenantSchema)) dto: UpdateTenantDto,
+  ) {
+    return this.tenantService.updateProfile(req.tenantId, dto);
+  }
+
+  /**
    * GET /api/v1/tenant/wallet
    * Real-time ledger balance check (pending balance, available balance, total earned).
    */
@@ -86,4 +101,5 @@ export class TenantController {
     return this.tenantService.verifyTenant(tenantId, isVerified);
   }
 }
+
 

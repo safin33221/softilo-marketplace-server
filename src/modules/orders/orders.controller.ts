@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Get,
@@ -73,11 +73,10 @@ export class OrdersController {
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SELLER_OWNER, Role.SUPER_ADMIN)
-  @UsePipes(new ZodValidationPipe(updateOrderStatusSchema))
   async updateStatus(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: UpdateOrderStatusDto,
+    @Body(new ZodValidationPipe(updateOrderStatusSchema)) dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(
       id,
@@ -87,4 +86,5 @@ export class OrdersController {
     );
   }
 }
+
 

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 export const onboardTenantSchema = z.object({
   name: z.string().min(2, 'দোকানের নাম নূন্যতম ২ অক্ষর হতে হবে (Shop name must be at least 2 chars)'),
@@ -23,3 +23,12 @@ export const resolveTenantQuerySchema = z.object({
 
 export type ResolveTenantQueryDto = z.infer<typeof resolveTenantQuerySchema>;
 
+
+export const updateTenantSchema = z.object({
+  name: z.string().min(2, 'দোকানের নাম ন্যূনতম ২ অক্ষর হতে হবে').optional(),
+  customDomain: z.string().optional().or(z.literal('')),
+  logoUrl: z.string().optional().or(z.literal('')),
+  bannerUrl: z.string().optional().or(z.literal('')),
+});
+
+export type UpdateTenantDto = z.infer<typeof updateTenantSchema>;

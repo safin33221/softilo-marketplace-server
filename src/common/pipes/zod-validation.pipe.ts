@@ -1,4 +1,4 @@
-import { PipeTransform, Injectable, BadRequestException, type ArgumentMetadata } from '@nestjs/common';
+﻿import { PipeTransform, Injectable, BadRequestException, type ArgumentMetadata } from '@nestjs/common';
 import { type ZodSchema } from 'zod';
 
 /**
@@ -11,8 +11,9 @@ export class ZodValidationPipe implements PipeTransform {
   constructor(private readonly schema: ZodSchema) {}
 
   transform(value: unknown, metadata?: ArgumentMetadata) {
-    // Only validate HTTP input payloads. Custom decorators (like @CurrentUser()) must never be validated by DTO schemas.
-    if (metadata && metadata.type === 'custom') {
+    // Only validate intended HTTP payloads. Skip custom decorators (like @CurrentUser(), @Req())
+    // and skip route parameters (@Param('id')) so object body schemas are not mistakenly run on string params.
+    if (metadata && (metadata.type === 'custom' || (metadata.type === 'param' && typeof value === 'string'))) {
       return value;
     }
 
@@ -34,4 +35,5 @@ export class ZodValidationPipe implements PipeTransform {
     return result.data;
   }
 }
+
 
